@@ -265,11 +265,26 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
             throw new IOException("Github response parse error", e);
         }
 
-        JSONArray parentsObjects = (JSONArray) jo.get("parents");
+        JSONArray parentsObjects;
+        try {
+            parentsObjects = (JSONArray) jo.get("parents");
+        } catch (NullPointerException e) {
+            try {
+                String errorMessage = (String) jo.get("message");
+                throw new IOException("Github api error: " + errorMessage, e);
+            } catch (NullPointerException ee) {
+                throw new IOException("Unexpected Github api response", ee);
+            }
+        }
 
         List<String> parents = new ArrayList<>(parentsObjects.size());
         for (Object o : parentsObjects) {
-            String parentCommit = (String) ((JSONObject) o).get("sha");
+            String parentCommit;
+            try {
+                parentCommit = (String) ((JSONObject) o).get("sha");
+            } catch (NullPointerException e) {
+                throw new IOException("Unexpected Github api response", e);
+            }
             parents.add(parentCommit);
         }
 
@@ -309,7 +324,17 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
             throw new IOException("Github response parse error", e);
         }
 
-        String commit = (String) ((JSONObject) jo.get("commit")).get("sha");
+        String commit;
+        try {
+            commit = (String) ((JSONObject) jo.get("commit")).get("sha");
+        } catch (NullPointerException e) {
+            try {
+                String errorMessage = (String) jo.get("message");
+                throw new IOException("Github api error: " + errorMessage, e);
+            } catch (NullPointerException ee) {
+                throw new IOException("Unexpected Github api response", ee);
+            }
+        }
 
         branchToCommit.put(branch, commit);
 
