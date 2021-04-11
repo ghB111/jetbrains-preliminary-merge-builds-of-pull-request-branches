@@ -13,12 +13,11 @@ class GithubLastCommonCommitsFinderTest {
 
     // Github limits amount of calls per hour to 60
     // if you are unauthorised. thus, change this flag
-    // to use the token in all tests
-    // This token is for my machine user profile,
-    // so there is no sensitive info :)
+    // to use the token in all tests, and provide your token
+    // Could not upload my own token, as github will delete those
+    // immediately
     private final boolean useToken = false;
-    private final String token = "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";
-
+    private final String token = "";
 
     /**
      * This test connects to my repo and finds last common commits of my
@@ -41,6 +40,7 @@ class GithubLastCommonCommitsFinderTest {
             assertEquals(1, lastCommonCommits.size());
             assertEquals("23ca9bc4dec619be229ab276055f233c7b1f0dce", lastCommonCommits.iterator().next());
         } catch (IOException e) {
+            e.printStackTrace();
             fail();
         }
 
@@ -108,31 +108,6 @@ class GithubLastCommonCommitsFinderTest {
             assertEquals(2, lastCommonCommits.size());
             assertTrue(expectedAnswer.containsAll(lastCommonCommits));
             assertTrue(lastCommonCommits.containsAll(expectedAnswer));
-        } catch (IOException e) {
-            fail();
-        }
-
-    }
-
-    /**
-     * This test shows token usage. It uses my machine user, which has
-     * a little repository.
-     */
-    @Test
-    public void tokenTest() {
-
-        LastCommonCommitsFinder lastCommonCommitsFinder = new GithubCommonCommitsFinderFactory()
-                .create("ghB111-machine-user", "jetbrains-token-test",
-                        token);
-
-        String simpleBranchA = "main";
-        String simpleBranchB = "dev";
-
-        try {
-            Collection<String> lastCommonCommits =
-                    lastCommonCommitsFinder.findLastCommonCommits(simpleBranchA, simpleBranchB);
-            assertEquals(1, lastCommonCommits.size());
-            assertEquals("d27c0bb10d185b0eeb63060e752f920b711f95a7", lastCommonCommits.iterator().next());
         } catch (IOException e) {
             fail();
         }
