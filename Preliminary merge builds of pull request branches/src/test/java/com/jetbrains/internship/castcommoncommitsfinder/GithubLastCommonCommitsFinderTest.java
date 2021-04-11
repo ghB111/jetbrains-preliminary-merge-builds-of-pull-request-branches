@@ -11,6 +11,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class GithubLastCommonCommitsFinderTest {
 
+    // Github limits amount of calls per hour to 60
+    // if you are unauthorised. thus, change this flag
+    // to use the token in all tests
+    // This token is for my machine user profile,
+    // so there is no sensitive info :)
+    private final boolean useToken = false;
+    private final String token = "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";
+
 
     /**
      * This test connects to my repo and finds last common commits of my
@@ -21,7 +29,8 @@ class GithubLastCommonCommitsFinderTest {
     public void mainWithInitialCommitTest() {
 
         LastCommonCommitsFinder lastCommonCommitsFinder = new GithubCommonCommitsFinderFactory()
-                .create("ghB111", "jetbrains-preliminary-merge-builds-of-pull-request-branches", null);
+                .create("ghB111", "jetbrains-preliminary-merge-builds-of-pull-request-branches",
+                        useToken ? token : null);
 
         String initialCommitBranch = "test-initial-commit";
         String mainBranch = "main";
@@ -51,7 +60,7 @@ class GithubLastCommonCommitsFinderTest {
 
         LastCommonCommitsFinder lastCommonCommitsFinder = new GithubCommonCommitsFinderFactory()
                 .create("ghB111", "jetbrains-preliminary-merge-builds-of-pull-request-branches",
-                        null);
+                        useToken ? token : null);
 
         String simpleBranchA = "simple-branch-test-A";
         String simpleBranchB = "simple-branch-test-B";
@@ -83,7 +92,7 @@ class GithubLastCommonCommitsFinderTest {
 
         LastCommonCommitsFinder lastCommonCommitsFinder = new GithubCommonCommitsFinderFactory()
                 .create("ghB111", "jetbrains-preliminary-merge-builds-of-pull-request-branches",
-                        null);
+                        useToken ? token : null);
 
         List<String> expectedAnswer = Arrays.asList(
                 "a9637bf9aad9a75e0afa9d5e685a02e880d221b4",
@@ -101,6 +110,49 @@ class GithubLastCommonCommitsFinderTest {
             assertTrue(lastCommonCommits.containsAll(expectedAnswer));
         } catch (IOException e) {
             fail();
+        }
+
+    }
+
+    /**
+     * This test shows token usage. It uses my machine user, which has
+     * a little repository.
+     */
+    @Test
+    public void tokenTest() {
+
+        LastCommonCommitsFinder lastCommonCommitsFinder = new GithubCommonCommitsFinderFactory()
+                .create("ghB111-machine-user", "jetbrains-token-test",
+                        token);
+
+        String simpleBranchA = "main";
+        String simpleBranchB = "dev";
+
+        try {
+            Collection<String> lastCommonCommits =
+                    lastCommonCommitsFinder.findLastCommonCommits(simpleBranchA, simpleBranchB);
+            assertEquals(1, lastCommonCommits.size());
+            assertEquals("d27c0bb10d185b0eeb63060e752f920b711f95a7", lastCommonCommits.iterator().next());
+        } catch (IOException e) {
+            fail();
+        }
+
+    }
+
+    @Test
+    public void nonExistentRepo() {
+
+        LastCommonCommitsFinder lastCommonCommitsFinder = new GithubCommonCommitsFinderFactory()
+                .create("ghB111", "thisPublicRepoDoesntExist",
+                        null);
+
+        String simpleBranchA = "main";
+        String simpleBranchB = "dev";
+
+        try {
+            lastCommonCommitsFinder.findLastCommonCommits(simpleBranchA, simpleBranchB);
+            fail();
+        } catch (IOException ignored) {
         }
 
     }
