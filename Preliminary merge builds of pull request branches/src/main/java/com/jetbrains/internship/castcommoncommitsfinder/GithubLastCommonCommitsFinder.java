@@ -249,7 +249,6 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
                 .uri(getGithubAPICommitURI(owner, repo, commit))
                 .build();
 
-        // todo: check response code
         String response;
         try {
             response = httpClient
@@ -309,7 +308,6 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
                 .uri(getGithubAPIBranchReferenceURI(owner, repo, branch))
                 .build();
 
-        // todo: check response code
         String response;
         try {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString()).body();
