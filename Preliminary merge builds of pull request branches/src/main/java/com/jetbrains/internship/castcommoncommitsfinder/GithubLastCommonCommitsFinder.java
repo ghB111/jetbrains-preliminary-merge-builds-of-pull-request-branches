@@ -257,39 +257,46 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
             throw new IOException("Error during Github api call", e);
         }
 
-        JSONObject jo;
+        JSONArray commitsArray = null;
         try {
-            jo = (JSONObject) new JSONParser().parse(response);
+            commitsArray = (JSONArray) new JSONParser().parse(response);
         } catch (ParseException e) {
             throw new IOException("Github response parse error", e);
-        }
-
-        JSONArray parentsObjects;
-        try {
-            parentsObjects = (JSONArray) jo.get("parents");
-        } catch (NullPointerException e) {
+        } catch (ClassCastException e) {
             try {
-                String errorMessage = (String) jo.get("message");
+                String errorMessage = (String) ((JSONObject) new JSONParser().parse(response)).get("message");
                 throw new IOException("Github api error: " + errorMessage, e);
+            } catch (ParseException ignored) {
             } catch (NullPointerException ee) {
-                throw new IOException("Unexpected Github api response", ee);
+                throw new IOException("Unexpected Github response", ee);
             }
         }
 
-        List<String> parents = new ArrayList<>(parentsObjects.size());
-        for (Object o : parentsObjects) {
-            String parentCommit;
+        for (Object commitObj : commitsArray == null ? Collections.emptyList() : commitsArray) {
+
+            String currentCommit;
+            JSONArray parentsObjects;
             try {
-                parentCommit = (String) ((JSONObject) o).get("sha");
+                currentCommit = (String) ((JSONObject) commitObj).get("sha");
+                parentsObjects = (JSONArray) ((JSONObject) commitObj).get("parents");
             } catch (NullPointerException e) {
                 throw new IOException("Unexpected Github api response", e);
             }
-            parents.add(parentCommit);
+
+            List<String> parents = new ArrayList<>(parentsObjects.size());
+            for (Object o : parentsObjects) {
+                String parentCommit;
+                try {
+                    parentCommit = (String) ((JSONObject) o).get("sha");
+                } catch (NullPointerException e) {
+                    throw new IOException("Unexpected Github api response", e);
+                }
+                parents.add(parentCommit);
+            }
+            commitToParents.put(currentCommit, parents);
         }
 
-        commitToParents.put(commit, parents);
-
-        return parents;
+        return commitToParents.get(commit);
     }
 
     /**
@@ -344,7 +351,8 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
     }
 
     private URI getGithubAPICommitURI(String owner, String repo, String commit) {
-        return URI.create("https://api.github.com/repos/" + owner + "/" + repo + "/git/commits/" + commit);
+        return URI.create("https://api.github.com/repos/" + owner + "/" + repo
+                + "/commits?per_page=100&sha=" + commit);
     }
 
 }
