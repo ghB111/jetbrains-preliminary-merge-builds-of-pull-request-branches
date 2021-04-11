@@ -92,13 +92,8 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
     @Override
     public Collection<String> findLastCommonCommits(String branchA, String branchB) throws IOException {
 
-        String branchCommitA = null, branchCommitB = null;
-        try {
-            branchCommitA = getCommitByBranch(branchA);
-            branchCommitB = getCommitByBranch(branchB);
-        } catch (InterruptedException | ParseException e) {
-            e.printStackTrace();
-        }
+        String branchCommitA = getCommitByBranch(branchA);
+        String branchCommitB = getCommitByBranch(branchB);
 
         if (branchCommitA.equals(branchCommitB)) {
             Collection<String> lastCommonCommits = new ArrayList<>();
@@ -111,14 +106,9 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
         commitToColor.put(branchCommitA, CommitSearchColor.REACHED_A);
         commitToColor.put(branchCommitB, CommitSearchColor.REACHED_B);
 
-        for (String commit: new String[]{branchCommitA, branchCommitB}) {
+        for (String commit : new String[]{branchCommitA, branchCommitB}) {
 
-            List<String> parents = null;
-            try {
-                parents = getCommitParents(commit);
-            } catch (InterruptedException | ParseException e) {
-                e.printStackTrace();
-            }
+            List<String> parents = getCommitParents(commit);
 
             List<CommitNode> parentNodes;
             if (commit.equals(branchCommitA)) {
@@ -136,8 +126,7 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
 
         Collection<String> lastCommonCommits = new ArrayList<>();
 
-        while (!searchQueue.isEmpty())
-        {
+        while (!searchQueue.isEmpty()) {
             CommitNode commitNode = searchQueue.remove();
 
             if (updateCommitNodeColor(commitNode)) {
@@ -150,12 +139,7 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
                 continue;
             }
 
-            List<String> parents = null;
-            try {
-                parents = getCommitParents(commitNode.commit);
-            } catch (InterruptedException | ParseException e) {
-                e.printStackTrace();
-            }
+            List<String> parents = getCommitParents(commitNode.commit);
 
             searchQueue.addAll(parents.stream()
                     .map(x -> new CommitNode(x, commitNode.intention))
@@ -169,7 +153,7 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
     /**
      * During a search, updates the commitToColor map according to the
      * intention during the search.
-     *
+     * <p>
      * For example, if the node we are about to examine is already reachable
      * from A (can tell using commitToColor), and the intention is to reach
      * it from B, the commitToColor map should be updated to know that
@@ -205,10 +189,11 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
      * Performs a dfs to get commits reachable from commit
      * in order to stop unneeded search and to delete
      * those commits from the queue.
+     *
      * @param commit commit from which to start the search
-     * @param queue the queue of the search
+     * @param queue  the queue of the search
      */
-    private void deleteReachableCommitsFromQueue(String commit, Queue<CommitNode> queue) {
+    private void deleteReachableCommitsFromQueue(String commit, Queue<CommitNode> queue) throws IOException {
 
         if (queue.isEmpty()) {
             return;
@@ -230,12 +215,7 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
                 continue;
             }
 
-            List<String> parents = null;
-            try {
-                parents = getCommitParents(currentCommit);
-            } catch (IOException | InterruptedException | ParseException e) {
-                e.printStackTrace();
-            }
+            List<String> parents = getCommitParents(currentCommit);
 
             searchStack.addAll(parents);
         }
@@ -244,18 +224,18 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
 
     /**
      * Returns a list of parents of a commit.
-     *
+     * <p>
      * If parents of the commit were known before, they are cached, thus are
      * immediately returned. Otherwise, an api call is made to Github in
      * order to retrieve the parents of that commit, as well as 99
      * other commits reachable from it (so, 100 at most).
-     *
+     * <p>
      * Other commits got from the api call will be cached as well.
      *
      * @param commit SHA of a commit
      * @return list of parents of the given commit.
      */
-    private List<String> getCommitParents(String commit) throws IOException, InterruptedException, ParseException {
+    private List<String> getCommitParents(String commit) throws IOException {
 
         if (commitToParents.containsKey(commit)) {
             return commitToParents.get(commit);
@@ -266,15 +246,25 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
                 .build();
 
         // todo: check response code
-        String response = httpClient
-                .send(request, HttpResponse.BodyHandlers.ofString()).body();
+        String response;
+        try {
+            response = httpClient
+                    .send(request, HttpResponse.BodyHandlers.ofString()).body();
+        } catch (InterruptedException e) {
+            throw new IOException("Error during Github api call", e);
+        }
 
-        JSONObject jo = (JSONObject) new JSONParser().parse(response);
+        JSONObject jo;
+        try {
+            jo = (JSONObject) new JSONParser().parse(response);
+        } catch (ParseException e) {
+            throw new IOException("Github response parse error", e);
+        }
 
         JSONArray parentsObjects = (JSONArray) jo.get("parents");
 
         List<String> parents = new ArrayList<>(parentsObjects.size());
-        for (Object o: parentsObjects) {
+        for (Object o : parentsObjects) {
             String parentCommit = (String) ((JSONObject) o).get("sha");
             parents.add(parentCommit);
         }
@@ -286,10 +276,11 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
 
     /**
      * Returns a commit SHA associated with the branch name.
+     *
      * @param branch name of a branch
      * @return commit SHA
      */
-    private String getCommitByBranch(String branch) throws IOException, InterruptedException, ParseException {
+    private String getCommitByBranch(String branch) throws IOException {
 
         if (branchToCommit.containsKey(branch)) {
             return branchToCommit.get(branch);
@@ -300,9 +291,19 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
                 .build();
 
         // todo: check response code
-        String response = httpClient.send(request, HttpResponse.BodyHandlers.ofString()).body();
+        String response;
+        try {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString()).body();
+        } catch (InterruptedException e) {
+            throw new IOException("Error during Github api call", e);
+        }
 
-        JSONObject jo = (JSONObject) new JSONParser().parse(response);
+        JSONObject jo;
+        try {
+            jo = (JSONObject) new JSONParser().parse(response);
+        } catch (ParseException e) {
+            throw new IOException("Github response parse error", e);
+        }
 
         String commit = (String) ((JSONObject) jo.get("commit")).get("sha");
 
