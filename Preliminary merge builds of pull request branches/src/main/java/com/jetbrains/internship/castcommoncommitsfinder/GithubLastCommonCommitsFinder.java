@@ -215,6 +215,10 @@ class GithubLastCommonCommitsFinder implements LastCommonCommitsFinder {
                 continue;
             }
 
+            if (commitToColor.get(currentCommit) == CommitSearchColor.REACHED_BOTH) {
+                continue;
+            }
+
             List<String> parents = getCommitParents(currentCommit);
 
             searchStack.addAll(parents);
